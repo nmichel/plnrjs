@@ -1,0 +1,17 @@
+{
+  "name": "plnrjs",
+  "description": "Async tasks scheduling made simple",
+  "version": "0.0.1",
+  "main": "plnrjs.js",
+  "deps": {
+    "deferred": "*"
+  },
+  "devDependencies": {
+    "chai": "*",
+    "mocha": "*",
+    "should": "*"
+  },
+  "scripts": {
+    "test": "mocha --no-colors --reporter spec"
+  }
+}
