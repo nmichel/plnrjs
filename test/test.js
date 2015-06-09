@@ -12,7 +12,10 @@ describe('resolver', function() {
         var d = plnrjs.deferred(),
             r = plnrjs.resolver(d)
              
-        r().done(done)
+        r(42).done(function(v) {
+            should(v).equal(42)
+            done()
+        })
     })
 })
 
@@ -20,10 +23,11 @@ describe('waiter', function() {
     it('schedules async task', function(done) {
         var d = plnrjs.deferred(),
             r = plnrjs.resolver(d),
-            w = plnrjs.waiter(r, done)
+            w = plnrjs.waiter(r, function(v) {
+                should(v).equal(42)
+            })
 
-        w()
-        d.resolve()
+        w(42).done(function() {done()})
     })
     
     it('returns a promise', function(done) {
@@ -32,7 +36,6 @@ describe('waiter', function() {
             w = plnrjs.waiter(r, function() {})
              
         w().done(done)
-        d.resolve()
     })
 })
 
@@ -77,28 +80,35 @@ var schedule = (function() {
     return setTimeout
 })()
 
-function immediate() {
-    return function() {
-        var d = plnrjs.deferred()
-        d.resolve() 
-        return d.promise()
-    }
-}
-
 function sleeper(delayInMs) {
-    return function() {
+    return function(v) {
         var d = plnrjs.deferred()
         schedule(function() {
-            d.resolve()
+            d.resolve(v)
         }, delayInMs)
         return d.promise()
     }
 }
 
 describe('seq', function() {
-    it('executes in order', function(done) {
+    it('wraps varargs in array', function(done) {
         this.timeout(2100)
         plnrjs.seq(sleeper(1000), sleeper(1000))().done(done)
+    })
+    
+    it('executes in order', function(done) {
+        this.timeout(2100)
+        plnrjs.seq([sleeper(1000), sleeper(1000)])().done(done)
+    })
+    
+    it('can receive parameters', function(done) {
+        function check(a, b) {
+            should(a).equal(b)
+        }
+        
+        plnrjs.seq([
+            plnrjs.immediate(plnrjs.partial(check, 'a')),
+            plnrjs.immediate(plnrjs.partial(check, 42))])(['a', 42]).done(function() {done()})
     })
 })
 
