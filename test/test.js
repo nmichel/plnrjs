@@ -160,6 +160,19 @@ describe('seq', function() {
 describe('par', function() {
     it('executes simultaneously', function(done) {
         this.timeout(1100)
-        plnrjs.par(sleeper(1000), sleeper(1000))().done(done)
+        plnrjs.par(sleeper(1000), sleeper(1000))().done(function() {
+            done()
+        })
+    })
+    
+    it('accumulates results in order', function(done) {
+        var inc = function(v) { return v+1 },
+            incw = plnrjs.wrapper(inc)
+
+        var p = plnrjs.par(incw, sleeper(1000), incw, sleeper(500), incw)             
+        p([1,,2,,3]).done(function(r) {
+            should(r).eql([2, undefined, 3, undefined, 4])
+            done()
+        })
     })
 })

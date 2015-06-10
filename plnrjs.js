@@ -72,9 +72,9 @@ module.exports = (function() {
         var cd = count,
             p = d.promise()
 
-        return function() {
+        return function(r) {
             if (--cd <= 0) {
-                d.resolve()
+                d.resolve(r)
             }
             
             return p
@@ -155,14 +155,37 @@ module.exports = (function() {
             return api.par([].splice.call(arguments, 0))
         }
 
+        function accumulator(a, v) {
+            a.push(v)
+            return a
+        }
+
+        function positional(a, p, v) {
+            var l = a.length
+            if (l > p) {
+                a[p] = v
+                return a // <== 
+            }
+            
+            for (var i = l; i < p; ++i) {
+                a.push(undefined)
+            }
+            a.push(v)
+            
+            return a
+        }
+        
         return function(p) {
             var d = api.deferred(),
                 fs = fns.slice().reverse(),
                 pg = api.generator(p),
-                cdr = api.countdownResolver(d, fs.length)
+                cdr = api.countdownResolver(d, fs.length),
+                acc = api.partial(positional, [])
 
-            fs.forEach(function(f) {
-                f(pg()).done(cdr)
+            fs.forEach(function(f, i) {
+                f(pg()).done(function(r) {
+                    cdr(acc(i, r))
+                })
             })
 
             return d.promise()
