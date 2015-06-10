@@ -81,7 +81,7 @@ module.exports = (function() {
         }
     }
     
-    api.immediate = function(f) {
+    api.wrapper = function(f) {
         return function(v) {
             var d = api.deferred()
             d.resolve(f(v))
@@ -138,10 +138,13 @@ module.exports = (function() {
                 pg = api.generator(p)
 
             fs.reduce(function(cont, f) {
-                return function() {
-                    api.waiter(f, cont)(pg())
+                return function(a) {
+                    api.waiter(f, function(res) {
+                        a.push(res)
+                        cont(a)
+                    })(pg())
                 }
-            }, api.resolver(d))()
+            }, api.resolver(d))([])
 
             return d.promise()
         }

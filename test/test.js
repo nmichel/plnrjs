@@ -91,24 +91,69 @@ function sleeper(delayInMs) {
 }
 
 describe('seq', function() {
-    it('wraps varargs in array', function(done) {
+    it('handles varargs form', function(done) {
         this.timeout(2100)
-        plnrjs.seq(sleeper(1000), sleeper(1000))().done(done)
+        plnrjs.seq(sleeper(1000), sleeper(1000))().done(function() {
+            done()
+        })
     })
     
     it('executes in order', function(done) {
         this.timeout(2100)
-        plnrjs.seq([sleeper(1000), sleeper(1000)])().done(done)
+        plnrjs.seq([sleeper(1000), sleeper(1000)])().done(function() {
+            done()
+        })
     })
     
     it('can receive parameters', function(done) {
         function check(a, b) {
             should(a).equal(b)
         }
+
+        var s = plnrjs.seq([plnrjs.wrapper(plnrjs.partial(check, 'a')),
+                            plnrjs.wrapper(plnrjs.partial(check, 42))])
+        s(['a', 42]).done(function() {
+            done()
+        })
+    })
+    
+    it('accumulates results', function(done) {
+        function add(v) {
+            return v + 1 
+        }
+
+        var s = plnrjs.seq([plnrjs.wrapper(add),plnrjs.wrapper(add)])         
+        s([3, 42]).done(function(r) {
+            should(r).eql([4, 43])
+            done()
+        })
+    })
+    
+    it('can be short', function(done) { 
+        var seq = plnrjs.seq
         
-        plnrjs.seq([
-            plnrjs.immediate(plnrjs.partial(check, 'a')),
-            plnrjs.immediate(plnrjs.partial(check, 42))])(['a', 42]).done(function() {done()})
+        var inc = function(v) { return v+1 },
+            incw = plnrjs.wrapper(inc)
+         
+        var s = seq(seq(incw, incw), seq(incw, incw))
+        s([[1, 2], [3, 4]]).done(function(r) {
+            should(r).eql([[2, 3], [4, 5]])
+            done()
+        })
+    })
+    
+    it('is idempotent', function(done) { 
+        var seq = plnrjs.seq
+        
+        var inc = function(v) { return v+1 },
+            incw = plnrjs.wrapper(inc)
+
+        var s = seq(incw, incw),
+            s2 = seq(s, s)
+        s2([[1, 2], [3, 4]]).done(function(r) {
+            should(r).eql([[2, 3], [4, 5]])
+            done()
+        })
     })
 })
 
