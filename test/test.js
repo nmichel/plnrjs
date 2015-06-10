@@ -176,3 +176,82 @@ describe('par', function() {
         })
     })
 })
+
+describe('pipe', function() {
+    it('executes in order', function(done) {
+        this.timeout(2100)
+        plnrjs.pipe([sleeper(1000), sleeper(1000)])().done(function() {
+            done()
+        })
+    })
+    
+    it('propagates results downstream', function(done) {
+        var inc = function(v) { return v+1 },
+            incw = plnrjs.wrapper(inc)
+        var p = plnrjs.pipe(incw, incw, incw)
+        p(1).done(function(r) {
+            should(r).equal(4)
+            done()
+        })
+    })
+})
+
+describe('it is fun', function() {
+    var seq = plnrjs.seq,
+        par = plnrjs.par,
+        pipe = plnrjs.pipe,
+        wrapper = plnrjs.wrapper
+
+
+    var c = 0,
+        gen = function() {
+            return ++c
+        }
+        
+    var inc = function(v) { return v+1 },
+        incw = wrapper(inc),
+        dblw = wrapper(function(v) { return v*2 })
+
+    var combo = pipe(seq(incw, incw, incw), // [1, 2, 3] -> [2, 3, 4]
+                     par(dblw, dblw, dblw), // -> [4, 6, 8]
+                     wrapper(function(a) {
+                         return a.reduce(function(p, c) {
+                             return p+c
+                         }, 0)
+                     })) 
+    
+    it('to combine seq and par with pipe', function(done) {
+        combo(gen).done(function(r) {
+            should(r).equal(18) // 4 + 6 + 8 => 18 !
+            done()
+        })
+    })
+    
+    it('to see side effect', function(done) {
+        combo(gen).done(function(r) { // Same (stateful) generator !!
+            should(r).equal(36)
+            done()
+        })
+    })
+            
+    it('to control side effect', function(done) {
+        c = 0 // "Reseed"" generator         
+        combo(gen).done(function(r) {
+            should(r).equal(18)
+            done()
+        })
+    })
+    
+    it('to avoid side effect', function(done) {
+        var gengen = function() {
+            var c = 0
+            return function() {
+                return ++c
+            }
+        }
+        par(combo, combo)([gengen(), gengen()]).done(function(r) {
+            should(r).eql([18, 18])
+            done()
+        })
+    })
+})

@@ -141,7 +141,7 @@ module.exports = (function() {
                 return function(a) {
                     api.waiter(f, function(res) {
                         a.push(res)
-                        cont(a)
+                        cont(a) // Propagate the array holding result values up to the resolver
                     })(pg())
                 }
             }, api.resolver(d))([])
@@ -150,6 +150,23 @@ module.exports = (function() {
         }
     }
 
+    api.pipe = function(fns) {
+        if (!(fns instanceof Array)) {
+            return api.pipe([].splice.call(arguments, 0))
+        }
+
+        return function(p) {
+            var d = api.deferred(),
+                fs = fns.slice().reverse()
+
+            fs.reduce(function(cont, f) {
+                return api.waiter(f, cont)
+            }, api.resolver(d))(p)
+
+            return d.promise()
+        }
+    }
+    
     api.par = function(fns) {
         if (!(fns instanceof Array)) {
             return api.par([].splice.call(arguments, 0))
